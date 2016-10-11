@@ -19,7 +19,7 @@
   (keyword (str (if (instance? Number k) (long k) k))))
 
 (defn apply-format [cell]
-  (.formatCellValue ^DataFormatter data-formatter cell *evaluator*))
+  (clojure.string/trim (.formatCellValue ^DataFormatter data-formatter cell *evaluator*)))
 
 (defn convert-value [value]
   (if-let [result (re-find #"^([-+]?[0-9]+)(\.[0-9]+)?$" value)]
@@ -144,8 +144,9 @@
                (add-sheet-config primary-key current-key (rest sheets) config))))))
 
 (defn parse-workbook [workbook]
-  (binding [*evaluator* (.createFormulaEvaluator
-                         (.getCreationHelper ^Workbook workbook))]
+  (binding [*evaluator* (doto (.createFormulaEvaluator
+                                (.getCreationHelper ^Workbook workbook))
+                              (.setIgnoreMissingWorkbooks true))]
     (doall (for [[[json-name type] sheets] (group-sheets workbook)]
              [json-name (case type
                           single-object (parse-single-object sheets)

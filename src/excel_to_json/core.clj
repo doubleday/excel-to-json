@@ -31,7 +31,7 @@
                               (and wrapper (seq? config)) (hash-map wrapper config)
                               :else config)
                              {:pretty true})]
-          (spit output-file json-string)
+          (spit output-file json-string :encoding "UTF-8")
           (log/info *logger* (str "Converted " file-path "->" output-file)))))
     (catch Exception e
       (log/error *logger* (str "Converting" file "failed with: " e "\n"))
