@@ -21,7 +21,7 @@
 (defn get-filename [^File file]
   (first (clojure.string/split (.getName file) #"\.")))
 
-(defn convert-and-save [^File file target-path wrapper ext]
+(defn convert-and-save [^File file target-path wrapper ext quit]
   (try
     (let [file-path (.getPath file)]
       (doseq [[filename config] (converter/convert file-path)]
@@ -34,8 +34,10 @@
           (spit output-file json-string :encoding "UTF-8")
           (log/info *logger* (str "Converted " file-path "->" output-file)))))
     (catch Exception e
-      (log/error *logger* (str "Converting" file "failed with: " e "\n"))
-      (clojure.pprint/pprint (.getStackTrace e)))))
+      (log/error *logger* (str "Converting " file " failed with: " e "\n"))
+      (clojure.pprint/pprint (.getStackTrace e))
+      (when quit
+        (throw e)))))
 
 (defn watch-callback [{:keys [source-path source-file target-path ext wrapper]} ^Path file-path]
   (let [f (.getPath ^File (.toFile file-path))
@@ -50,10 +52,10 @@
       (when (or (nil? source-file)
                 (= a1 a2))
         (log/info *logger* "Updating changed file...")
-        (convert-and-save file target-path wrapper ext)
+        (convert-and-save file target-path wrapper ext false)
         (log/status *logger* "[done]")))))
 
-(defn run [{:keys [source-path source-file target-path wrapper ext] :as state}]
+(defn run [{:keys [source-path source-file target-path wrapper quit ext] :as state}]
   (log/info *logger* (format "Converting files from '%s' to '%s'"
                              source-path target-path))
   (let [directory (clojure.java.io/file source-path)
@@ -64,7 +66,7 @@
                                  acc)) [] (.listFiles directory))
                      [source-file])]
     (doseq [file xlsx-files]
-      (convert-and-save file target-path wrapper ext))
+      (convert-and-save file target-path wrapper ext quit))
     (log/status *logger* "[done]")
     state))
 
@@ -88,7 +90,8 @@
   [[nil "--disable-watching" "Disable watching" :default false :flag true]
    ["-h" "--help" "Show help" :default false :flag true]
    ["-w" "--wrapper WRAPPER" "Wrape list in object" :default nil]
-   ["-e" "--ext EXT" "Use ext instead of json" :default "json"]]
+   ["-e" "--ext EXT" "Use ext instead of json" :default "json"]
+   ["-q" "--quit" "Quit when error occurs" :default false :flag true]]
   )
 
 ;; re-run on directory-change
@@ -123,31 +126,36 @@
     (.substring absolute-path 0 (.lastIndexOf absolute-path File/separator))))
 
 (defn -main [& args]
-  (let [parsed-options (cli/parse-opts args option-specs)]
-    (when (:help (:options parsed-options))
-      (println (:summary parsed-options))
-      (System/exit 0))
-    (let [arguments (:arguments parsed-options)]
-      (if (> (count arguments) 0)
-        (let [source-arg (first arguments) target-path-arg (second arguments)
-              source-is-file (.isFile (clojure.java.io/file source-arg))
-              source-file (if source-is-file
-                            (clojure.java.io/file source-arg)
-                            nil)
-              source-path (if source-is-file
-                            (get-absolute-path source-file)
-                            source-arg)
-              target-path (if target-path-arg target-path-arg source-path)
-              state {:source-path source-path
-                     :source-file source-file
-                     :target-path target-path
-                     :watched-path source-path
-                     :ext (:ext (:options parsed-options))
-                     :wrapper (:wrapper (:options parsed-options))}]
-          (run state)
-          (when-not (:disable-watching (:options parsed-options))
-            (start-watching state)
-            nil))
-        (do
-          (println "Usage: excel-to-json SOURCE [TARGETDIR]")
-          (println "       SOURCE can be either a directory or a single file."))))))
+  (try
+    (let [parsed-options (cli/parse-opts args option-specs)]
+      (when (:help (:options parsed-options))
+        (println (:summary parsed-options))
+        (System/exit 0))
+      (let [arguments (:arguments parsed-options)]
+        (if (> (count arguments) 0)
+          (let [source-arg (first arguments) target-path-arg (second arguments)
+                source-is-file (.isFile (clojure.java.io/file source-arg))
+                source-file (if source-is-file
+                              (clojure.java.io/file source-arg)
+                              nil)
+                source-path (if source-is-file
+                              (get-absolute-path source-file)
+                              source-arg)
+                target-path (if target-path-arg target-path-arg source-path)
+                state {:source-path source-path
+                       :source-file source-file
+                       :target-path target-path
+                       :watched-path source-path
+                       :ext (:ext (:options parsed-options))
+                       :quit (:quit (:options parsed-options))
+                       :wrapper (:wrapper (:options parsed-options))}]
+            (run state)
+            (when-not (:disable-watching (:options parsed-options))
+              (start-watching state)
+              nil))
+          (do
+            (println "Usage: excel-to-json SOURCE [TARGETDIR]")
+            (println "       SOURCE can be either a directory or a single file.")))))
+    (catch Exception e
+      (str "caught exception: " (.getMessage e))
+      (System/exit -1))))
