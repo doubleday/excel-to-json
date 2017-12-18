@@ -99,7 +99,7 @@
                   secondary-key (convert-header (second headers))
                   unpacked-rows (map #(unpack-keys headers %) rows)
                   grouped-rows (group-by primary-key unpacked-rows)
-                  secondary-config (get grouped-rows (name current-key))]
+                  secondary-config (get grouped-rows current-key)]
               ;; TODO remove either primary or current key
               (reduce (fn [acc row]
                         (let [nested-key (get row secondary-key)
@@ -140,7 +140,7 @@
         primary-key (convert-header (first headers))]
     (doall (for [row rows]
              (let [config (unpack-keys headers row)
-                   current-key (keyword (get config primary-key))]
+                   current-key (get config primary-key)]
                (add-sheet-config primary-key current-key (rest sheets) config))))))
 
 (defn parse-workbook [workbook]
