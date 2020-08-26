@@ -35,7 +35,7 @@
           (log/info *logger* (str "Converted " file-path "->" output-file)))))
     (catch Exception e
       (log/error *logger* (str "Converting " file " failed with: " e "\n"))
-      (clojure.pprint/pprint (.getStackTrace e))
+      (clojure.stacktrace/print-stack-trace e)
       (when quit
         (throw e)))))
 

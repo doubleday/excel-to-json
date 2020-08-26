@@ -7,7 +7,6 @@
   (:import [org.apache.poi.ss.usermodel Row Cell DateUtil WorkbookFactory CellStyle Font
             Hyperlink Workbook Sheet]))
 
-(def ^:dynamic *row-missing-policy* Row/CREATE_NULL_AS_BLANK)
 
 (def data-formats {:general 0 :number 1 :decimal 2 :comma 3 :accounting 4
                    :dollars 5 :red-neg 6 :cents 7 :dollars-red-neg 8
@@ -80,9 +79,6 @@
   (if (isa? (type fontspec) Font)
     fontspec
     (let [default-font (.getFontAt wb (short 0)) ;; First font is default
-          boldweight (short (get fontspec :boldweight (if (:bold fontspec)
-                                                        Font/BOLDWEIGHT_BOLD
-                                                        Font/BOLDWEIGHT_NORMAL)))
           color (short (if-let [k (fontspec :color)]
                          (col-idx k)
                          (.getColor default-font)))
@@ -95,9 +91,8 @@
                             (if (keyword? k) (underline-indices k) k)
                             (.getUnderline default-font)))]
       (or
-       (.findFont wb boldweight size color name italic strikeout typeoffset underline)
+       (.findFont wb size color name italic strikeout typeoffset underline)
        (doto (.createFont wb)
-         (.setBoldweight boldweight)
          (.setColor color)
          (.setFontName name)
          (.setItalic italic)

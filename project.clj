@@ -1,7 +1,7 @@
-(defproject excel-to-json "0.1.2-SNAPSHOT"
+(defproject excel-to-json "0.1.3-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [org.apache.poi/poi "3.14"]
-                 [org.apache.poi/poi-ooxml "3.14"]
+                 [org.apache.poi/poi "3.17"]
+                 [org.apache.poi/poi-ooxml "3.17"]
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
                  [org.clojure/tools.cli "0.3.1"]
                  [cheshire "5.3.1"]
@@ -19,4 +19,5 @@
                    :dependencies [[org.clojure/tools.namespace "0.2.4"]]
                    :global-vars {*print-length* 20}}
              :test {:resource-paths ["test-resources"]}}
+  :jvm-opts ["-Xmx1G"]
   :main excel-to-json.core)
