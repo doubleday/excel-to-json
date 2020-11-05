@@ -1,10 +1,13 @@
 (ns excel-to-json.converter
   (:require [flatland.ordered.map :refer [ordered-map]]
             [clj-excel.core :as ce]
-            [clojure.core.match :refer [match]])
-  (:import [org.apache.poi.ss.usermodel DataFormatter Cell Workbook CreationHelper]))
+            [clojure.core.match :refer [match]]
+            [excel-to-json.logger :as log])
+  (:import [org.apache.poi.ss.usermodel DataFormatter Cell Workbook CreationHelper] [excel_to_json.logger PrintLogger]))
 
 (def ^:dynamic *evaluator*)
+
+(def ^:dynamic *logger* (PrintLogger.))
 
 (def data-formatter (DataFormatter.))
 
@@ -95,6 +98,8 @@
 
 (defn add-sheet-config [primary-key current-key sheets config]
   (reduce (fn [acc0 sheet]
+            (log/info *logger* (str "Trying to parse: " (.getSheetName sheet)))
+
             (let [[headers rows] (headers-and-rows sheet)
                   secondary-key (convert-header (second headers))
                   unpacked-rows (map #(unpack-keys headers %) rows)
